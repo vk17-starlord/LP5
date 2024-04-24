@@ -1,0 +1,165 @@
+//vector matrix mul
+
+%%cuda
+#include <stdio.h>
+
+// Size of array
+#define N 1048576
+
+__global__ void matrix_mul(int *a , int *b, int *c , int size){
+    
+    int row  =  blockIdx.y * blockDim.y + threadIdx.y ;
+    int col  =  blockIdx.x  * blockDim.x  + threadIdx.x ;
+
+    if(row < size && col < size){
+        int sum = 0;
+        for(int i=0;i<size;i++){
+            sum += a[row*size+i] * b[i*size+col];
+        }
+        c[row*size*col]=sum;
+    }
+     
+}
+
+void verifyResults(int *a , int *b, int *c , int size){
+    
+    //row
+    for(int i=0 ; i<size ; i++){
+        //col
+        for(int j=0;j<size;j++){
+            // every element in row and col pair
+            int tmp = 0;
+            for(int k=0;k<size;k++){
+                 tmp += a[ i * size +  k ] * b [ k * size + j ]; 
+            }
+            if(c[i*size*j] !=  tmp ){
+                printf("error");
+                exit(1);
+            }
+        }
+    }
+}
+
+void initMatrix(int *arr ,int size){
+    for(int i=0. ; i<size * size; i++){
+        arr[i] = rand() % 100;
+    }
+    
+}
+int main(){
+    
+           // 2^10 2^10 square matrix
+           int size = 1 << 10;
+
+           size_t bytes = size * sizeof(int); 
+
+           // allocate memory for matrix
+
+           int *a, *b , *c ;
+
+           cudaMallocManaged( &a , bytes); 
+           cudaMallocManaged( &b , bytes); 
+           cudaMallocManaged( &c , bytes); 
+
+           initMatrix(a,size);
+
+           initMatrix(b,size);
+
+           initMatrix(c ,size);
+
+
+
+           //1 set CTA and GRID Dimensions
+
+           int threads = 16;
+           int blocks =( N + threads - 1 ) / threads;
+           
+           dim3 THREADS(threads,threads);
+           dim3 BLOCKS(blocks,blocks);
+
+           // launch our kernel
+           matrix_mul<<< BLOCKS , THREADS >>>(a,b,c,size);
+           cudaDeviceSynchronize();
+
+           
+           verifyResults(a,b,c,size);
+
+           printf("completed");
+     
+}
+
+
+// vector addition
+%%cuda
+#include <stdio.h>
+
+// Size of array
+#define N 1048576
+
+__global__ void add_vectors(double *a , double *b , double *c ){
+		 int id = ( blockIdx.x * blockDim.x ) + threadIdx.x;
+		 if(id < N){
+					c[id] = a[id] + b[id];
+		 }
+}
+
+int main(){
+	//calculate bytes requested
+	size_t bytes_req = N * sizeof(double);
+
+  //allocate on cpu
+	double *A = (double*) malloc(bytes_req);
+	double *B = (double*) malloc(bytes_req);
+	double *C = (double*) malloc(bytes_req);
+
+  // generate two vectors with random data
+	for(int i=0;i<N;i++){
+			 A[i]=(rand() % N);
+			 B[i]=(rand() % N);
+	}
+
+  double *d_A , *d_B , *d_C;
+
+	// allocate space on GPU
+	cudaMalloc(&d_A,bytes_req);
+	cudaMalloc(&d_B,bytes_req);
+	cudaMalloc(&d_C,bytes_req);
+
+	// copy data from host array A , B to A , B on GPU
+	cudaMemcpy(d_A,A,bytes_req,cudaMemcpyHostToDevice);
+	cudaMemcpy(d_B,B,bytes_req,cudaMemcpyHostToDevice);
+
+	// set execution configuration parameters
+	int NUM_THREADS = 256;
+	int BLOCK_IN_GRID = ceil(float(N) / NUM_THREADS);
+	printf("The value of myNumber is: %d\n", BLOCK_IN_GRID);
+
+  // perform addition asynchronously
+  add_vectors<<< BLOCK_IN_GRID , NUM_THREADS >>>(d_A , d_B , d_C );
+
+
+	// synchronize and copy vector back to cpu
+	cudaMemcpy(C , d_C , bytes_req , cudaMemcpyDeviceToHost);
+
+  // verify results
+  for (int i = 0; i < N; i++) {
+    if(C[i] != A[i] + B[i]){
+					 printf("Error");
+					 exit(1);
+		}
+  }
+
+	// Free CPU memory
+	free(A);
+	free(B);
+	free(C);
+
+	// Free GPU memory
+	cudaFree(d_A);
+	cudaFree(d_B);
+	cudaFree(d_C);
+
+
+  printf("working");
+	return 0;
+}
