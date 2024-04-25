@@ -1,0 +1,99 @@
+#include <iostream>
+#include <omp.h>
+#include <chrono>
+#include <vector>
+#include <stack>
+#include <queue>
+using namespace std;
+class Graph{
+    private:
+    int size;
+    vector<vector<int>> adjList;
+    
+    public:
+    Graph(int v){
+        size = v;
+        adjList.resize(v);
+    }
+    
+    void addEdge(int u, int v) {
+        adjList[u].push_back(v);
+        adjList[v].push_back(u); // Undirected graph
+    }
+    
+  void bfs_parallel(int startVertex){
+            vector<bool> visited(size, false);
+            queue<int> q;
+            visited[startVertex] = true;
+            q.push(startVertex);
+
+            while(!q.empty()){
+                int current = q.front();
+                q.pop();
+                cout<<current<<" ";
+
+                #pragma omp parallel for
+                for (int neighbor : adjList[current]){
+                    if(!visited[neighbor]){
+                        visited[neighbor] = true;
+                        q.push(neighbor);
+                    }
+                }
+            }
+        }
+
+    // Serial BFS function
+    void bfs(int start) {
+        vector<bool> visited(size, false); // Keeps track of visited nodes
+        queue<int> q; // Queue for BFS traversal
+        visited[start] = true; // Mark the start node as visited
+        q.push(start); // Add the start node to the queue
+
+        while (!q.empty()) {
+            int current = q.front(); // Get the first node in the queue
+            q.pop(); // Remove it from the queue
+
+            cout << "Visited: " << current << endl; // Output the visited node
+
+            // Add all unvisited adjacent nodes to the queue
+            for (int neighbor : adjList[current]) {
+                if (!visited[neighbor]) {
+                    visited[neighbor] = true; // Mark as visited
+                    q.push(neighbor); // Add to queue
+                }
+            }
+        }
+    }
+    
+};
+
+
+
+int main()
+{
+      // Create a graph with 7 vertices
+    Graph graph(7);
+
+    // Adding edges to the graph to make it undirected
+    graph.addEdge(0, 1);
+    graph.addEdge(0, 2);
+    graph.addEdge(1, 3);
+    graph.addEdge(1, 4);
+    graph.addEdge(2, 5);
+    graph.addEdge(2, 6);
+    
+    
+    auto nstart = chrono::high_resolution_clock::now();
+    graph.DFS(0);
+    auto nend = chrono::high_resolution_clock::now();
+    chrono::duration<double> nduration = nend - nstart;
+    cout<<"Time required for serial is "<<nduration.count()<<endl;
+    
+    auto start = chrono::high_resolution_clock::now();
+    graph.bfs(0);
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    cout<<"Time required for parallel is "<<duration.count();
+
+    return 0;
+}
