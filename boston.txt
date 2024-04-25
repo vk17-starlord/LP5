@@ -1,1 +1,50 @@
 
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
+import numpy as np
+import pandas as pd
+
+# Load the Boston House Price dataset
+data_url = "http://lib.stat.cmu.edu/datasets/boston"
+raw_df = pd.read_csv(data_url, sep="\s+", skiprows=22, header=None)
+X = np.hstack([raw_df.values[::2, :], raw_df.values[1::2, :2]])
+y = raw_df.values[1::2, 2]
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features for better performance with neural networks
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Define a simple deep neural network model for linear regression
+model = keras.Sequential([
+    layers.Dense(64, activation='relu', input_shape=(X_train_scaled.shape[1],)),
+    layers.Dense(32, activation='relu'),
+    layers.Dense(1)  # Output layer with one neuron for linear regression
+])
+
+# Compile the model with mean squared error loss and an optimizer
+model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+
+# Train the model
+model.fit(X_train_scaled, y_train, epochs=50, batch_size=16, verbose=1)
+
+# Evaluate the model on the test set
+test_loss, test_mae = model.evaluate(X_test_scaled, y_test, verbose=1)
+
+# Get the model's predictions on the test set
+y_pred = model.predict(X_test_scaled)
+
+# Calculate the mean squared error for evaluation
+mse = mean_squared_error(y_test, y_pred)
+
+# Print the results
+print("Mean Absolute Error (MAE) on Test Set:", test_mae)
+print("Mean Squared Error (MSE) on Test Set:", mse)
