@@ -33,7 +33,6 @@ class Graph{
                 q.pop();
                 cout<<current<<" ";
 
-                #pragma omp parallel for
                 for (int neighbor : adjList[current]){
                     if(!visited[neighbor]){
                         visited[neighbor] = true;
