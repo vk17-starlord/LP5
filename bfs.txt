@@ -26,7 +26,8 @@ class Graph{
             queue<int> q;
             visited[startVertex] = true;
             q.push(startVertex);
-
+           
+           #pragma omp parallel for
             while(!q.empty()){
                 int current = q.front();
                 q.pop();
