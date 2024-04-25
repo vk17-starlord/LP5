@@ -1,0 +1,43 @@
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import numpy as np
+
+# Load the Fashion MNIST dataset
+fashion_mnist = keras.datasets.fashion_mnist
+(X_train, y_train), (X_test, y_test) = fashion_mnist.load_data()
+
+# Normalize the data to improve training
+X_train = X_train / 255.0
+X_test = X_test / 255.0
+
+# Reshape the data to add a channel dimension
+X_train = X_train.reshape((X_train.shape[0], 28, 28, 1))
+X_test = X_test.reshape((X_test.shape[0], 28, 28, 1))
+
+# Define the CNN model
+model = keras.Sequential([
+    # Convolutional layers
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    layers.MaxPooling2D((2, 2)),  # Pooling layer to reduce spatial dimensions
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    # Fully connected layers
+    layers.Flatten(),  # Flattening the convolutional layers to feed into dense layers
+    layers.Dense(128, activation='relu'),  # Dense layer with ReLU activation
+    layers.Dropout(0.5),  # Dropout layer to prevent overfitting
+    layers.Dense(10, activation='softmax')  # Output layer for 10 classes with softmax activation
+])
+
+# Compile the model with categorical cross-entropy and an optimizer
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+model.fit(X_train, y_train, epochs=10, batch_size=64, validation_split=0.2, verbose=1)
+
+# Evaluate the model on the test set
+test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=1)
+
+# Print the test accuracy
+print("Test Accuracy:", test_accuracy)
